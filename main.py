@@ -1,7 +1,3 @@
-#start
-
-
-
 import tkinter as tk
 from random import shuffle
 
@@ -9,7 +5,7 @@ from random import shuffle
 class MyButton(tk.Button):
 
     def __init__(self, master, x, y, *args, number, **kwargs):
-        super(MyButton, self).__init__(master,  width=3, font="Calibri 15 bold", *args, **kwargs)
+        super(MyButton, self).__init__(master, width=3, font="Calibri 15 bold", *args, **kwargs)
         self.x = x
         self.y = y
         self.number = number
@@ -20,7 +16,6 @@ class MyButton(tk.Button):
 
 
 class MineSweeper:
-
     window = tk.Tk()
     ROW = 10
     COLUMNS = 7
@@ -32,12 +27,18 @@ class MineSweeper:
         for i in range(self.ROW):
             temp = []
             for j in range(self.COLUMNS):
-                btn = MyButton(self.window, x=i, y=j, number = count)
+                btn = MyButton(self.window, x=i, y=j, number=count)
+                btn.config(command=lambda button=btn: self.click(button))
                 temp.append(btn)
                 count += 1
             self.buttons.append(temp)
 
-
+    def click(self, clicked_button: MyButton):
+        if clicked_button.is_mine:
+            clicked_button.config(text='*', background='red', disabledforeground='black')
+        else:
+            clicked_button.config(text=clicked_button.number, disabledforeground='black')
+        clicked_button.config(state='disable')
 
     def create_widgets(self):
         for i in range(self.ROW):
@@ -67,6 +68,7 @@ class MineSweeper:
         indexes = list(range(1, self.ROW * self.COLUMNS + 1))
         shuffle(indexes)
         return indexes[:self.MINES]
+
 
 game = MineSweeper()
 game.start()
