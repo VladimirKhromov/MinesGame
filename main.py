@@ -6,12 +6,10 @@ colors_lst = ['blue', 'green', 'red', '#130091', '#5e0000', '#005e40', '#1a0000'
 colors = {i + 1: colors_lst[i] for i in range(len(colors_lst))}
 
 
-
-
 class MyButton(tk.Button):
 
     def __init__(self, master, x, y, number=0, *args, **kwargs):
-        super(MyButton, self).__init__(master, width=3, font="Calibri 12 bold", *args, **kwargs)
+        super(MyButton, self).__init__(master, height=5, width=10, font="Calibri 12 bold", *args, **kwargs)
         self.x = x
         self.y = y
         self.number = number
@@ -25,9 +23,14 @@ class MyButton(tk.Button):
 
 class MineSweeper:
     window = tk.Tk()
-    ROW = 10
-    COLUMNS = 10
-    MINES = 19
+    window.title("MineSweeper")
+    game_place = tk.Frame(window)
+    game_place.place(relwidth=1, relheight=0.8)
+    info_place = tk.Frame(window)
+    info_place.place(rely=0.8, relwidth=1, relheight=0.2)
+    ROW = 19
+    COLUMNS = 15
+    MINES = 20
     IS_GAME_OVER = False
     IS_FIRST_CLICK = True
 
@@ -36,11 +39,19 @@ class MineSweeper:
         for i in range(self.ROW + 2):
             temp = []
             for j in range(self.COLUMNS + 2):
-                btn = MyButton(self.window, x=i, y=j)
+                btn = MyButton(self.game_place, x=i, y=j)
                 btn.config(command=lambda button=btn: self.click(button))
                 btn.bind("<Button-3>", self.right_click)
                 temp.append(btn)
             self.buttons.append(temp)
+        self.geometry(self.ROW, self.COLUMNS)
+        self.mines_count = self.MINES
+        self.info_widgets()
+
+    def geometry(self, row, column):
+        width = 200 if column < 6 else column * 25
+        height = 220 if row < 6 else row * 25
+        return self.window.geometry(f'{width}x{height}')
 
     def right_click(self, event):
         if self.IS_GAME_OVER or self.IS_FIRST_CLICK:
@@ -51,11 +62,13 @@ class MineSweeper:
             cur_btn['state'] = "disabled"
             cur_btn['disabledforeground'] = 'black'
             cur_btn["text"] = "🚩"
+            self.mines_count -= 1
+            self.info_widgets()
         elif cur_btn["text"] == "🚩":
             cur_btn['state'] = "normal"
             cur_btn["text"] = ""
-
-
+            self.mines_count += 1
+            self.info_widgets()
 
     def click(self, clicked_button: MyButton):
 
@@ -78,6 +91,7 @@ class MineSweeper:
                     if btn.is_mine:
                         btn['text'] = '*'
             showinfo("Game Over", 'Вы проиграли!')
+            self.info_widgets(True)
         else:
             color = colors.get(clicked_button.count_bomb)
 
@@ -88,6 +102,22 @@ class MineSweeper:
                 self.breadth_first_search(clicked_button)
         clicked_button.config(state='disable')
         clicked_button.config(relief=tk.SUNKEN)
+
+        _count = 0
+        for i in range(1, self.ROW + 1):
+            for j in range(1, self.COLUMNS + 1):
+                btn = self.buttons[i][j]
+                if btn.is_open:
+                    _count += 1
+
+        if _count == self.COLUMNS * self.ROW - self.MINES and not self.IS_GAME_OVER:
+            for i in range(1, self.ROW + 1):
+                for j in range(1, self.COLUMNS + 1):
+                    btn = self.buttons[i][j]
+                    if btn.is_mine:
+                        btn['text'] = '🚩'
+            showinfo("WIN!", 'Вы победили!\nЭто достойная победа!')
+            self.IS_GAME_OVER = True
 
     def breadth_first_search(self, btn: MyButton):
         queue = [btn]
@@ -116,7 +146,8 @@ class MineSweeper:
                             queue.append(next_btn)
 
     def reload(self):
-        [child.destroy() for child in self.window.winfo_children()]
+        [child.destroy() for child in self.game_place.winfo_children()]
+        [child.destroy() for child in self.info_place.winfo_children()]
         self.__init__()
         self.create_widgets()
         self.IS_FIRST_CLICK = True
@@ -125,18 +156,22 @@ class MineSweeper:
     def create_settings_window(self):
         win_settings = tk.Toplevel(self.window)
         win_settings.wm_title("Настройки")
+        # 1
         tk.Label(win_settings, text="Количество строк").grid(row=0, column=0)
         row_entry = tk.Entry(win_settings)
         row_entry.insert(0, self.ROW)
         row_entry.grid(row=0, column=1, padx=20, pady=20)
+        # 2
         tk.Label(win_settings, text="Количество колонок").grid(row=1, column=0)
         column_entry = tk.Entry(win_settings)
         column_entry.insert(0, self.COLUMNS)
         column_entry.grid(row=1, column=1, padx=20, pady=20)
+        # 3
         tk.Label(win_settings, text="Количество мин").grid(row=2, column=0)
         mines_entry = tk.Entry(win_settings)
         mines_entry.insert(0, self.MINES)
         mines_entry.grid(row=2, column=1, padx=20, pady=20)
+        # save button
         save_btn = tk.Button(win_settings, text="Применить",
                              command=lambda: self.change_settings(row_entry, column_entry, mines_entry))
 
@@ -154,14 +189,16 @@ class MineSweeper:
 
     def create_widgets(self):
 
+        # menu
         menubar = tk.Menu(self.window)
         self.window.config(menu=menubar)
-
         settings_menu = tk.Menu(menubar, tearoff=0)
         settings_menu.add_command(label="Играть", command=self.reload)
         settings_menu.add_command(label="Настройки", command=self.create_settings_window)
         settings_menu.add_command(label="Выход", command=self.window.destroy)
         menubar.add_cascade(label='Файл', menu=settings_menu)
+
+        # game_place
 
         count = 1
         for i in range(1, self.ROW + 1):
@@ -172,23 +209,20 @@ class MineSweeper:
                 count += 1
 
         for i in range(1, self.ROW + 1):
-            tk.Grid.rowconfigure(self.window, i, weight=1)
+            tk.Grid.rowconfigure(self.game_place, i, weight=1)
         for i in range(1, self.COLUMNS + 1):
-            tk.Grid.columnconfigure(self.window, i, weight=1)
+            tk.Grid.columnconfigure(self.game_place, i, weight=1)
 
-    def open_all_buttons(self):
-        for i in range(self.ROW + 2):
-            for j in range(self.COLUMNS + 2):
-                btn = self.buttons[i][j]
-                if btn.is_mine:
-                    btn.config(text='*', background='red', disabledforeground='black')
-                elif btn.count_bomb in colors:
-                    color = colors.get(btn.count_bomb, "black")
-                    btn.config(text=btn.count_bomb, fg=color)
+    def info_widgets(self, game_over=False):
+        if game_over:
+            btn = tk.Button(self.info_place, text="Заново!", font=15, command=self.reload)
+            btn.pack(expand=1)
+        else:
+            mine_info = tk.Label(self.info_place, text=f"Мины: {self.mines_count}", font=15)
+            mine_info.place(relx=0.45, rely=0.1)
 
     def start(self):
         self.create_widgets()
-        # self.open_all_buttons()
         self.window.mainloop()
 
     def print_buttons(self):
